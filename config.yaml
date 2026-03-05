@@ -1,0 +1,26 @@
+data:
+  raw_path: "data/raw/telco_customer_churn.csv"
+  target_col: "Churn"
+  id_col: "customerID"
+  required_cols:
+    - customerID
+    - gender
+    - SeniorCitizen
+    - Partner
+    - Dependents
+    - tenure
+    - PhoneService
+    - MultipleLines
+    - InternetService
+    - OnlineSecurity
+    - OnlineBackup
+    - DeviceProtection
+    - TechSupport
+    - StreamingTV
+    - StreamingMovies
+    - Contract
+    - PaperlessBilling
+    - PaymentMethod
+    - MonthlyCharges
+    - TotalCharges
+    - Churn
