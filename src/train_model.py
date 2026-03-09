@@ -1,5 +1,7 @@
 import pandas as pd
 from pathlib import Path
+import mlflow
+import mlflow.sklearn
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
@@ -9,8 +11,7 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     f1_score,
-    roc_auc_score,
-    confusion_matrix
+    roc_auc_score
 )
 
 
@@ -27,59 +28,78 @@ def load_training_data():
     return X_train, X_test, y_train, y_test
 
 
-def evaluate_model(model, X_test, y_test):
+def evaluate(model, X_test, y_test):
 
     predictions = model.predict(X_test)
-
     probabilities = model.predict_proba(X_test)[:, 1]
 
-    accuracy = accuracy_score(y_test, predictions)
+    metrics = {
+        "accuracy": accuracy_score(y_test, predictions),
+        "precision": precision_score(y_test, predictions),
+        "recall": recall_score(y_test, predictions),
+        "f1": f1_score(y_test, predictions),
+        "roc_auc": roc_auc_score(y_test, probabilities)
+    }
 
-    precision = precision_score(y_test, predictions)
-
-    recall = recall_score(y_test, predictions)
-
-    f1 = f1_score(y_test, predictions)
-
-    roc_auc = roc_auc_score(y_test, probabilities)
-
-    cm = confusion_matrix(y_test, predictions)
-
-    print("Accuracy:", accuracy)
-    print("Precision:", precision)
-    print("Recall:", recall)
-    print("F1 Score:", f1)
-    print("ROC-AUC:", roc_auc)
-
-    print("Confusion Matrix:")
-    print(cm)
-
-    print("\n")
+    return metrics
 
 
 def train_models():
 
     X_train, X_test, y_train, y_test = load_training_data()
 
-    print("Training Logistic Regression")
+    mlflow.set_experiment("churn_prediction")
 
-    lr_model = LogisticRegression(max_iter=1000)
+    # ---------------------
+    # Logistic Regression
+    # ---------------------
 
-    lr_model.fit(X_train, y_train)
+    with mlflow.start_run(run_name="logistic_regression"):
 
-    evaluate_model(lr_model, X_test, y_test)
+        model = LogisticRegression(max_iter=1000)
 
-    print("Training Random Forest")
+        model.fit(X_train, y_train)
 
-    rf_model = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=10,
-        random_state=42
-    )
+        metrics = evaluate(model, X_test, y_test)
 
-    rf_model.fit(X_train, y_train)
+        mlflow.log_params({
+            "model": "logistic_regression"
+        })
 
-    evaluate_model(rf_model, X_test, y_test)
+        mlflow.log_metrics(metrics)
+
+        mlflow.sklearn.log_model(model, "model")
+
+        print("Logistic Regression Metrics:", metrics)
+
+
+    # ---------------------
+    # Random Forest
+    # ---------------------
+
+    with mlflow.start_run(run_name="random_forest"):
+
+        model = RandomForestClassifier(
+            n_estimators=200,
+            max_depth=10,
+            random_state=42
+        )
+
+        model.fit(X_train, y_train)
+
+        metrics = evaluate(model, X_test, y_test)
+
+        mlflow.log_params({
+            "model": "random_forest",
+            "n_estimators": 200,
+            "max_depth": 10
+        })
+
+        mlflow.log_metrics(metrics)
+
+        mlflow.sklearn.log_model(model, "model")
+
+        print("Random Forest Metrics:", metrics)
 
 
 if __name__ == "__main__":
