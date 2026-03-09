@@ -1,7 +1,6 @@
-import pandas as pd
+import joblib
 from pathlib import Path
-import mlflow
-import mlflow.sklearn
+import pandas as pd
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
@@ -14,6 +13,10 @@ from sklearn.metrics import (
     roc_auc_score
 )
 
+
+# ---------------------------------------------------
+# Load training datasets
+# ---------------------------------------------------
 
 def load_training_data():
 
@@ -28,10 +31,15 @@ def load_training_data():
     return X_train, X_test, y_train, y_test
 
 
+# ---------------------------------------------------
+# Model evaluation
+# ---------------------------------------------------
+
 def evaluate(model, X_test, y_test):
 
     predictions = model.predict(X_test)
-    probabilities = model.predict_proba(X_test)[:, 1]
+
+    probabilities = model.predict_proba(X_test)[:,1]
 
     metrics = {
         "accuracy": accuracy_score(y_test, predictions),
@@ -44,63 +52,55 @@ def evaluate(model, X_test, y_test):
     return metrics
 
 
+# ---------------------------------------------------
+# Train models
+# ---------------------------------------------------
+
 def train_models():
 
     X_train, X_test, y_train, y_test = load_training_data()
 
-    mlflow.set_experiment("churn_prediction")
-
-    # ---------------------
-    # Logistic Regression
-    # ---------------------
-
-    with mlflow.start_run(run_name="logistic_regression"):
-
-        model = LogisticRegression(max_iter=1000)
-
-        model.fit(X_train, y_train)
-
-        metrics = evaluate(model, X_test, y_test)
-
-        mlflow.log_params({
-            "model": "logistic_regression"
-        })
-
-        mlflow.log_metrics(metrics)
-
-        mlflow.sklearn.log_model(model, "model")
-
-        print("Logistic Regression Metrics:", metrics)
-
-
-    # ---------------------
-    # Random Forest
-    # ---------------------
-
-    with mlflow.start_run(run_name="random_forest"):
-
-        model = RandomForestClassifier(
+    models = {
+        "logistic_regression": LogisticRegression(max_iter=1000),
+        "random_forest": RandomForestClassifier(
             n_estimators=200,
             max_depth=10,
             random_state=42
         )
+    }
+
+    best_model = None
+    best_score = 0
+
+    for model_name, model in models.items():
+
+        print(f"\nTraining {model_name}")
 
         model.fit(X_train, y_train)
 
         metrics = evaluate(model, X_test, y_test)
 
-        mlflow.log_params({
-            "model": "random_forest",
-            "n_estimators": 200,
-            "max_depth": 10
-        })
+        print(metrics)
 
-        mlflow.log_metrics(metrics)
+        if metrics["f1"] > best_score:
 
-        mlflow.sklearn.log_model(model, "model")
+            best_score = metrics["f1"]
 
-        print("Random Forest Metrics:", metrics)
+            best_model = model
 
+
+    print("\nBest model F1 score:", best_score)
+
+    Path("models").mkdir(exist_ok=True)
+
+    joblib.dump(best_model, "models/best_model.pkl")
+
+    print("Best model saved to models/best_model.pkl")
+
+
+# ---------------------------------------------------
+# Run training
+# ---------------------------------------------------
 
 if __name__ == "__main__":
 
