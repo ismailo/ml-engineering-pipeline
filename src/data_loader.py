@@ -9,7 +9,7 @@ import yaml
 
 
 # -----------------------------
-# 1) Config model (simple)
+# 1) Config model (simple) --
 # -----------------------------
 @dataclass
 class DataConfig:
